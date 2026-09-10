@@ -20,11 +20,11 @@ function Get-Fibonacci {
         return $N
     }
 
-    $previous = 0
-    $current = 1
+    [System.Numerics.BigInteger]$previous = 0
+    [System.Numerics.BigInteger]$current = 1
 
     for ($i = 2; $i -le $N; $i++) {
-        $next = $previous + $current
+        [System.Numerics.BigInteger]$next = $previous + $current
         $previous = $current
         $current = $next
     }

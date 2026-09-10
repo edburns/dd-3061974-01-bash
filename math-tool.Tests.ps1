@@ -23,6 +23,10 @@ Describe 'Get-Fibonacci unit behavior' {
         Get-Fibonacci -N 5 | Should -Be 5
     }
 
+    It 'returns the exact value for N=100' {
+        Get-Fibonacci -N 100 | Should -Be ([System.Numerics.BigInteger]::Parse('354224848179261915075'))
+    }
+
     It 'rejects negative input' {
         { Get-Fibonacci -N -1 } | Should -Throw
     }
@@ -37,20 +41,31 @@ Describe 'math-tool CLI behavior' {
                 [string[]]$Arguments
             )
 
-            $stdoutPath = [System.IO.Path]::GetTempFileName()
-            $stderrPath = [System.IO.Path]::GetTempFileName()
+            $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+            $startInfo.FileName = 'pwsh'
+            $startInfo.UseShellExecute = $false
+            $startInfo.RedirectStandardOutput = $true
+            $startInfo.RedirectStandardError = $true
+            foreach ($argument in $Arguments) {
+                $startInfo.ArgumentList.Add($argument)
+            }
 
+            $process = [System.Diagnostics.Process]::new()
+            $process.StartInfo = $startInfo
             try {
-                $process = Start-Process -FilePath 'pwsh' -ArgumentList $Arguments -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+                $process.Start() | Out-Null
+                $stdOut = $process.StandardOutput.ReadToEnd()
+                $stdErr = $process.StandardError.ReadToEnd()
+                $process.WaitForExit()
 
                 [PSCustomObject]@{
                     ExitCode = $process.ExitCode
-                    StdOut   = @(Get-Content -Path $stdoutPath)
-                    StdErr   = Get-Content -Path $stderrPath -Raw
+                    StdOut   = @($stdOut -split '\r?\n' | Where-Object { $_ -ne '' })
+                    StdErr   = $stdErr
                 }
             }
             finally {
-                Remove-Item -LiteralPath $stdoutPath, $stderrPath -ErrorAction SilentlyContinue
+                $process.Dispose()
             }
         }
     }
@@ -88,7 +103,7 @@ Describe 'math-tool CLI behavior' {
         $result.ExitCode | Should -Not -Be 0
         $result.StdOut.Count | Should -BeLessOrEqual 1
         if ($result.StdOut.Count -eq 1) {
-            $result.StdOut[0] | Should -Not -Match '^Fibonacci\(-1\) = \d+$'
+            $result.StdOut[0] | Should -Not -Match '^Fibonacci\(-1\) ='
         }
     }
 }
