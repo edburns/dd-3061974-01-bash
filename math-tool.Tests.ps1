@@ -57,10 +57,17 @@ Describe 'math-tool CLI behavior' {
                 $stdOut = $process.StandardOutput.ReadToEnd()
                 $stdErr = $process.StandardError.ReadToEnd()
                 $process.WaitForExit()
+                $stdOutWithoutTerminator = $stdOut -replace '\r?\n\z', ''
+                $stdOutLines = [System.Collections.Generic.List[string]]::new()
+                if ($stdOutWithoutTerminator -ne '') {
+                    foreach ($line in ($stdOutWithoutTerminator -split '\r?\n')) {
+                        $stdOutLines.Add($line)
+                    }
+                }
 
                 [PSCustomObject]@{
                     ExitCode = $process.ExitCode
-                    StdOut   = @($stdOut -split '\r?\n' | Where-Object { $_ -ne '' })
+                    StdOut   = $stdOutLines
                     StdErr   = $stdErr
                 }
             }
@@ -95,6 +102,13 @@ Describe 'math-tool CLI behavior' {
         $result.StdErr | Should -BeNullOrEmpty
         $result.StdOut.Count | Should -Be 1
         $result.StdOut[0] | Should -Be 'Fibonacci(5) = 5'
+    }
+
+    It 'preserves extra blank output records for exact line counting' {
+        $result = & $invokeChildPwsh -Arguments @('-NoLogo', '-NoProfile', '-Command', '[Console]::Out.Write("line`n`n")')
+
+        $result.StdOut.Count | Should -Be 2
+        $result.StdOut[1] | Should -Be ''
     }
 
     It 'rejects negative input and does not print success-shaped output' {
