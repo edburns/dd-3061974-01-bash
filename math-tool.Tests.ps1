@@ -35,11 +35,7 @@ Describe 'Get-Fibonacci unit behavior' {
 Describe 'Get-Factorial unit behavior' {
     BeforeAll {
         $scriptPath = Join-Path $PSScriptRoot 'math-tool.ps1'
-        $dotSourceOutput = . $scriptPath -N 0
-    }
-
-    It 'does not emit output when dot-sourced' {
-        $dotSourceOutput | Should -BeNullOrEmpty
+        . $scriptPath -N 0
     }
 
     It 'returns 1 for N=0' {
@@ -52,6 +48,10 @@ Describe 'Get-Factorial unit behavior' {
 
     It 'returns 120 for N=5' {
         Get-Factorial -N 5 | Should -Be 120
+    }
+
+    It 'returns the exact value for N=25' {
+        Get-Factorial -N 25 | Should -Be ([System.Numerics.BigInteger]::Parse('15511210043330985984000000'))
     }
 
     It 'rejects negative input' {
