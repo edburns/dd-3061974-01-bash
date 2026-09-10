@@ -32,6 +32,33 @@ Describe 'Get-Fibonacci unit behavior' {
     }
 }
 
+Describe 'Get-Factorial unit behavior' {
+    BeforeAll {
+        $scriptPath = Join-Path $PSScriptRoot 'math-tool.ps1'
+        . $scriptPath -N 0
+    }
+
+    It 'returns 1 for N=0' {
+        Get-Factorial -N 0 | Should -Be 1
+    }
+
+    It 'returns 1 for N=1' {
+        Get-Factorial -N 1 | Should -Be 1
+    }
+
+    It 'returns 120 for N=5' {
+        Get-Factorial -N 5 | Should -Be 120
+    }
+
+    It 'returns the exact value for N=25' {
+        Get-Factorial -N 25 | Should -Be ([System.Numerics.BigInteger]::Parse('15511210043330985984000000'))
+    }
+
+    It 'rejects negative input' {
+        { Get-Factorial -N -1 } | Should -Throw
+    }
+}
+
 Describe 'math-tool CLI behavior' {
     BeforeAll {
         $scriptPath = Join-Path $PSScriptRoot 'math-tool.ps1'
@@ -104,6 +131,24 @@ Describe 'math-tool CLI behavior' {
         $result.StdOut[0] | Should -Be 'Fibonacci(5) = 5'
     }
 
+    It 'prints exactly one line for explicit fibonacci operation' {
+        $result = & $invokeChildPwsh -Arguments @('-NoLogo', '-NoProfile', '-File', $scriptPath, '-Operation', 'fibonacci', '-N', '5')
+
+        $result.ExitCode | Should -Be 0
+        $result.StdErr | Should -BeNullOrEmpty
+        $result.StdOut.Count | Should -Be 1
+        $result.StdOut[0] | Should -Be 'Fibonacci(5) = 5'
+    }
+
+    It 'prints exactly one line for factorial operation' {
+        $result = & $invokeChildPwsh -Arguments @('-NoLogo', '-NoProfile', '-File', $scriptPath, '-Operation', 'factorial', '-N', '5')
+
+        $result.ExitCode | Should -Be 0
+        $result.StdErr | Should -BeNullOrEmpty
+        $result.StdOut.Count | Should -Be 1
+        $result.StdOut[0] | Should -Be 'Factorial(5) = 120'
+    }
+
     It 'preserves extra blank output records for exact line counting' {
         $result = & $invokeChildPwsh -Arguments @('-NoLogo', '-NoProfile', '-Command', '[Console]::Out.Write("line`n`n")')
 
@@ -118,6 +163,26 @@ Describe 'math-tool CLI behavior' {
         $result.StdOut.Count | Should -BeLessOrEqual 1
         if ($result.StdOut.Count -eq 1) {
             $result.StdOut[0] | Should -Not -Match '^Fibonacci\(-1\) ='
+        }
+    }
+
+    It 'rejects unsupported operation and does not print success-shaped output' {
+        $result = & $invokeChildPwsh -Arguments @('-NoLogo', '-NoProfile', '-File', $scriptPath, '-Operation', 'unknown', '-N', '5')
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.StdOut.Count | Should -BeLessOrEqual 1
+        if ($result.StdOut.Count -eq 1) {
+            $result.StdOut[0] | Should -Not -Match '^(Fibonacci|Factorial)\(5\) ='
+        }
+    }
+
+    It 'rejects negative factorial input and does not print success-shaped output' {
+        $result = & $invokeChildPwsh -Arguments @('-NoLogo', '-NoProfile', '-File', $scriptPath, '-Operation', 'factorial', '-N', '-1')
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.StdOut.Count | Should -BeLessOrEqual 1
+        if ($result.StdOut.Count -eq 1) {
+            $result.StdOut[0] | Should -Not -Match '^Factorial\(-1\) ='
         }
     }
 }
